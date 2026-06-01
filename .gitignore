@@ -1,0 +1,9 @@
+# real secrets — never commit
+config.yaml
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.streamlit/secrets.toml

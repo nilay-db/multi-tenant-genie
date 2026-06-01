@@ -1,0 +1,28 @@
+# Copy to config.yaml (gitignored) and fill in. ONE shared Service Principal for all tenants.
+workspace_url: "https://<your-workspace>.cloud.databricks.com"
+warehouse_id: "<sql-warehouse-id>"
+genie_space_id: "<genie-space-id-over-orders>"
+
+catalog: "nt_workspace_catalog"
+schema: "kustom_claims_demo"
+
+# The single shared SP. Per request the host app mints a token from this SP with
+# custom_claim=<tenant claim>. The SP must OWN the orders table (see provision.py / README).
+app_sp:
+  client_id: "<shared-sp-app-id>"
+  client_secret: "<shared-sp-oauth-secret>"
+
+# Tenants are just claim values the host app would resolve from its own login.
+# There are NO per-tenant secrets here — that's the whole point of Pattern B.
+tenants:
+  - name: "Cafe Aurora"
+    claim: "M001"
+  - name: "Velocity Sportswear"
+    claim: "M002"
+  - name: "Nordic Hardware"
+    claim: "M003"
+
+questions:
+  - "What was my total revenue?"
+  - "What are my top 3 products by revenue?"
+  - "How many orders did I have?"
