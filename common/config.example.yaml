@@ -1,0 +1,13 @@
+# Copy to common/config.yaml (gitignored) and fill in.
+# This config is only used by setup_base_data.py to build the ONE shared base table.
+# An admin identity runs it — provide an admin token via env DATABRICKS_TOKEN, or set
+# admin_token below.
+workspace_url: "https://<your-workspace>.cloud.databricks.com"
+warehouse_id: "<sql-warehouse-id>"
+
+catalog: "nt_workspace_catalog"
+schema: "kustom_claims_demo"
+
+# Optional: an admin token. Prefer `export DATABRICKS_TOKEN=$(databricks auth token \
+#   --profile <p> | jq -r .access_token)` so no token is ever written to disk.
+# admin_token: "<dapi...>"

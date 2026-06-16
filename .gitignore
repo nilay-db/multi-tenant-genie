@@ -1,8 +1,10 @@
-# real secrets — never commit
+# real secrets — never commit. Matches config.yaml in every pattern subdir.
+**/config.yaml
 config.yaml
 
 # python
 __pycache__/
+**/__pycache__/
 *.pyc
 .venv/
 venv/

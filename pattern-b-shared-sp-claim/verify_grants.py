@@ -1,8 +1,8 @@
 """
 Prove the production-safe / non-bypassable grant model for the DV variant.
 
-Run AFTER provision_dv.py, which leaves this end state:
-  - VIEW orders_secure_dv  owned by a definer identity that HOLDS base SELECT.
+Run AFTER provision.py, which leaves this end state:
+  - VIEW orders_secure_b  owned by a definer identity that HOLDS base SELECT.
   - shared SP              has SELECT on the VIEW only; its base SELECT is REVOKED.
 
 Tests (prints verbatim error codes/messages so the finding is exact):
@@ -31,7 +31,7 @@ FQ = f"{CAT}.{SCH}"
 SP = cfg["app_sp"]
 APP = SP["client_id"]
 BASE = f"{FQ}.orders_base"
-VIEW = f"{FQ}.orders_secure_dv"
+VIEW = f"{FQ}.orders_secure_b"
 
 ADMIN = os.environ.get("DATABRICKS_TOKEN") or cfg.get("admin_token")
 if not ADMIN:
@@ -79,7 +79,7 @@ def main():
     g = stmt(f"SHOW GRANTS ON TABLE {BASE}", ADMIN)
     print(f"\ngrants on orders_base: {json.dumps(g['rows'])}")
     o = [r for r in (stmt(f'DESCRIBE EXTENDED {VIEW}', ADMIN)['rows'] or []) if r and r[0] == 'Owner']
-    print(f"owner of orders_secure_dv: {o}")
+    print(f"owner of orders_secure_b: {o}")
 
     show("A.  SP + claim=M001 -> SELECT SUM(amount) FROM VIEW  (SP has NO base SELECT)",
          stmt(f"SELECT SUM(amount) AS total FROM {VIEW}", sp_token("M001")))

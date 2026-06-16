@@ -1,0 +1,37 @@
+# Copy to config.yaml (gitignored) and fill in. Pattern A: ONE Service Principal per tenant.
+workspace_url: "https://<your-workspace>.cloud.databricks.com"
+warehouse_id: "<sql-warehouse-id>"
+
+# Genie space built over the dynamic view orders_secure_a (run_as = VIEWER).
+genie_space_id: "<genie-space-id-over-orders_secure_a>"
+
+catalog: "nt_workspace_catalog"
+schema: "kustom_claims_demo"
+
+# Identity that OWNS orders_secure_a (definer's rights). Must hold SELECT on orders_base
+# and on sp_tenant_map, and must NOT be one of the tenant SPs. Used by provision.py.
+# Prefer running provision.py with an admin token (env DATABRICKS_TOKEN) and letting the
+# view be owned by that admin.
+view_owner: "<admin-user-or-group-that-owns-the-view>"
+
+# One SP per tenant. sp_client_id is the SP's application (client) id. At query time
+# current_user() returns exactly this value for an SP-authenticated session, which is what
+# the sp_tenant_map maps to a tenant_id. (Verified empirically — see README.)
+tenants:
+  - name: "Cafe Aurora"
+    tenant_id: "M001"
+    sp_client_id: "<sp-app-id-1>"
+    sp_client_secret: "<sp-oauth-secret-1>"
+  - name: "Velocity Sportswear"
+    tenant_id: "M002"
+    sp_client_id: "<sp-app-id-2>"
+    sp_client_secret: "<sp-oauth-secret-2>"
+  - name: "Nordic Hardware"
+    tenant_id: "M003"
+    sp_client_id: "<sp-app-id-3>"
+    sp_client_secret: "<sp-oauth-secret-3>"
+
+questions:
+  - "What was my total revenue?"
+  - "What are my top 3 products by revenue?"
+  - "How many orders did I have?"

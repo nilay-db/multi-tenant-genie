@@ -3,7 +3,7 @@ Streamlit "merchant portal" — Pattern B (one shared SP + custom identity claim
 
 Simulates Kustom's customer portal: a merchant is "logged in" (picked in the sidebar);
 the portal mints a token from the SINGLE shared SP carrying custom_claim=<tenant>, and
-Unity Catalog returns only that merchant's data.
+the dynamic view orders_secure_b returns only that merchant's data.
 """
 import streamlit as st
 import pandas as pd
@@ -25,7 +25,7 @@ with st.sidebar:
         f"**Claim value:** `{tenant['claim']}`\n\n"
         f"**Auth:** shared SP `{cfg['app_sp']['client_id'][:8]}…`\n\n"
         "Every merchant uses the **same** Service Principal. The portal mints a per-request token "
-        "with `custom_claim` set to this merchant; a UC row filter reads "
+        "with `custom_claim` set to this merchant; the dynamic view `orders_secure_b` reads "
         "`current_oauth_custom_identity_claim()` and returns only this merchant's rows."
     )
     st.divider()
@@ -65,7 +65,7 @@ for who, claim, q, r in st.session_state.history:
             df = pd.DataFrame(r["data"], columns=r.get("columns") or None)
             st.dataframe(df, use_container_width=True, hide_index=True)
         if r.get("sql"):
-            with st.expander("SQL Genie generated (no tenant predicate — UC row filter + claim isolate)"):
+            with st.expander("SQL Genie generated (no tenant predicate — the dynamic view + claim isolate)"):
                 st.code(r["sql"], language="sql")
         if r.get("api"):
             with st.expander("🔌 Genie API call (one shared SP — the tenant rides in the token claim)"):
@@ -79,4 +79,4 @@ for who, claim, q, r in st.session_state.history:
                     f"- **Genie space:** `{a['space_id']}`  ·  **conversation:** `{a['conversation_id']}`  ·  **message:** `{a['message_id']}`"
                 )
                 st.caption("Same shared SP for every merchant — only the `custom_claim` in the token changes. "
-                           "Unity Catalog's row filter reads that claim via current_oauth_custom_identity_claim().")
+                           "The dynamic view orders_secure_b reads that claim via current_oauth_custom_identity_claim().")
