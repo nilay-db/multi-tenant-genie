@@ -67,3 +67,16 @@ for who, claim, q, r in st.session_state.history:
         if r.get("sql"):
             with st.expander("SQL Genie generated (no tenant predicate — UC row filter + claim isolate)"):
                 st.code(r["sql"], language="sql")
+        if r.get("api"):
+            with st.expander("🔌 Genie API call (one shared SP — the tenant rides in the token claim)"):
+                a = r["api"]
+                st.markdown(
+                    f"- **Auth:** {a['auth_method']}\n"
+                    f"- **Authenticated as:** `{a['authenticated_as']}`\n"
+                    f"- **1. Mint token:** `{a['token_endpoint']}`\n"
+                    f"- **2. Ask Genie:** `{a['genie_endpoint']}`\n"
+                    f"- **3. Poll for result:** `{a['poll_endpoint']}`\n"
+                    f"- **Genie space:** `{a['space_id']}`  ·  **conversation:** `{a['conversation_id']}`  ·  **message:** `{a['message_id']}`"
+                )
+                st.caption("Same shared SP for every merchant — only the `custom_claim` in the token changes. "
+                           "Unity Catalog's row filter reads that claim via current_oauth_custom_identity_claim().")

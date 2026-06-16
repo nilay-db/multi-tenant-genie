@@ -20,10 +20,11 @@ def load_config(path=CONFIG_PATH):
 
 
 class GenieClient:
-    def __init__(self, config=None):
+    def __init__(self, config=None, space_id=None):
         self.cfg = config or load_config()
         self.host = self.cfg["workspace_url"].rstrip("/")
-        self.space_id = self.cfg["genie_space_id"]
+        # space_id override lets callers pick the DV space without mutating config.
+        self.space_id = space_id or self.cfg["genie_space_id"]
         self.sp = self.cfg["app_sp"]
 
     # ---- auth: ONE shared SP, claim injected per request --------------------
@@ -51,6 +52,18 @@ class GenieClient:
         conv = start.get("conversation_id") or start.get("conversation", {}).get("id")
         msg = start.get("message_id") or start.get("message", {}).get("id")
 
+        # demo-visibility metadata (no secrets) — surfaced in the portal's "Genie API call" panel
+        api = {
+            "auth_method": "OAuth client_credentials (M2M) — ONE shared SP + custom_claim",
+            "authenticated_as": f"shared SP {self.sp['client_id']}  +  custom_claim={claim}",
+            "token_endpoint": f"POST {self.host}/oidc/v1/token  (grant_type=client_credentials, scope=all-apis, custom_claim={claim})",
+            "genie_endpoint": f"POST {base}/start-conversation",
+            "poll_endpoint": f"GET {base}/conversations/{conv}/messages/{msg}",
+            "space_id": self.space_id,
+            "conversation_id": conv,
+            "message_id": msg,
+        }
+
         message = {}
         for _ in range(max_polls):
             message = requests.get(f"{base}/conversations/{conv}/messages/{msg}", headers=h, timeout=60).json()
@@ -58,7 +71,7 @@ class GenieClient:
                 break
             time.sleep(poll_seconds)
 
-        out = {"status": message.get("status"), "text": None, "sql": None, "columns": None, "data": None}
+        out = {"status": message.get("status"), "text": None, "sql": None, "columns": None, "data": None, "api": api}
         for att in (message.get("attachments") or []):
             if "text" in att:
                 out["text"] = att["text"].get("content")
