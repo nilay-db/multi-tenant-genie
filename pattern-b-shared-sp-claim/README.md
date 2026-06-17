@@ -47,6 +47,85 @@ Genie Conversation API → generated SQL over orders_secure_b →
 Genie's generated SQL is `SELECT SUM(amount) … FROM orders_secure_b WHERE amount IS NOT NULL` —
 **no tenant predicate**. The view + claim isolate.
 
+## Passing the custom claim — the API in detail
+
+The whole pattern hinges on **one extra parameter** on an otherwise-standard Databricks OAuth
+token request: `custom_claim`. Everything else is the normal OAuth M2M + Genie Conversation API
+flow.
+
+### Step 1 — mint a token that carries the claim
+
+The host app exchanges the shared SP's `client_id`/`secret` for a token via HTTP Basic auth,
+adding `custom_claim=<tenant>`:
+
+```bash
+curl -s -X POST "https://<workspace-host>/oidc/v1/token" \
+  -u "<shared-sp-client-id>:<shared-sp-oauth-secret>" \
+  -d grant_type=client_credentials \
+  -d scope=all-apis \
+  -d custom_claim=M001
+```
+
+(`-u id:secret` is just shorthand for an `Authorization: Basic base64(id:secret)` header.)
+
+| form field | value | notes |
+|---|---|---|
+| `grant_type` | `client_credentials` | standard OAuth M2M (service principal) |
+| `scope` | `all-apis` | can be narrowed to the Genie scopes |
+| `custom_claim` | `M001` (the tenant) | **the key bit** — embeds the claim in the JWT |
+
+The returned `access_token` is a JWT whose payload carries:
+
+```json
+{ "custom": { "claim": "M001" }, "...": "..." }
+```
+
+Inside `orders_secure_b`, `current_oauth_custom_identity_claim()` returns exactly that string
+(`"M001"`), and the view's `WHERE` uses it to filter.
+
+### Step 2 — call the Genie Conversation API with that token
+
+Three calls, all sent with `Authorization: Bearer <access_token>`:
+
+```bash
+BASE="https://<workspace-host>/api/2.0/genie/spaces/<space_id>"
+
+# (a) start a conversation
+curl -s -X POST "$BASE/start-conversation" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"content":"What was my total revenue?"}'
+# → { "conversation_id": "...", "message_id": "..." }
+
+# (b) poll the message until status == COMPLETED
+curl -s "$BASE/conversations/<conversation_id>/messages/<message_id>" \
+  -H "Authorization: Bearer $TOKEN"
+# → status + attachments[].query.query (the generated SQL) + attachment_id
+
+# (c) fetch the result rows
+curl -s "$BASE/conversations/<conversation_id>/messages/<message_id>/attachments/<attachment_id>/query-result" \
+  -H "Authorization: Bearer $TOKEN"
+# → statement_response.result.data_array
+```
+
+`genie_client.py` implements exactly this (`_token()` → `ask()`) — read it for the reference code.
+
+### Documentation & status — read this before you build
+
+`custom_claim` and `current_oauth_custom_identity_claim()` are a **Private Preview** capability:
+they must be enabled on your workspace by Databricks, and they are **not in the public docs**
+(only the error class `OAUTH_CUSTOM_IDENTITY_CLAIM_NOT_PROVIDED` is public). The primitives they
+ride on, however, are GA and fully documented:
+
+| Capability | Status | Public docs |
+|---|---|---|
+| OAuth M2M token endpoint (`POST /oidc/v1/token`, `client_credentials`) | **GA** | [OAuth M2M auth](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m) |
+| Genie Conversation API (`start-conversation` / `messages` / `query-result`) | **GA** | [Conversation API](https://docs.databricks.com/aws/en/genie/conversation-api) · [API reference](https://docs.databricks.com/api/workspace/genie) |
+| `custom_claim` token parameter | **Private Preview** | not publicly documented — request enablement via your Databricks account team |
+| `current_oauth_custom_identity_claim()` SQL function | **Private Preview** | not publicly documented |
+
+In short: you can build the OAuth + Conversation API flow straight from public docs; the only
+non-public dependency is the claim itself, which needs preview enablement.
+
 ## Grant model (the bypass is closed)
 
 - `orders_secure_b` is **owned by a definer** (the provisioning admin / `view_owner`) that holds

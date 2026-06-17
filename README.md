@@ -88,6 +88,9 @@ time. Important surface limits:
 Pattern A uses only **GA** primitives (`current_user()`, views, mapping table), so it has none of
 these surface limits.
 
+For the exact token request (`curl`), the JWT shape, the Conversation API call sequence, and a
+GA-vs-Private-Preview docs table, see **["Passing the custom claim — the API in detail"](pattern-b-shared-sp-claim/README.md)** in the Pattern B README.
+
 ## Repo layout
 
 ```
